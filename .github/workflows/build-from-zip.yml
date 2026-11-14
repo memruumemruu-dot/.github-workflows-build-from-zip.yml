@@ -1,0 +1,48 @@
+name: Build from zip
+
+on:
+  push:
+    paths: [ 'SafeGuard.zip' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: unzip -q SafeGuard.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          build-root-directory: SafeGuard
+
+      - name: Build debug APK
+        working-directory: SafeGuard
+        run: gradle assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: cp SafeGuard/app/build/outputs/apk/debug/app-debug.apk SafeGuard.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SafeGuard-debug-apk
+          path: SafeGuard.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: SafeGuard build ${{ github.run_number }}
+          files: SafeGuard.apk
+          make_latest: true
